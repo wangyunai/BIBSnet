@@ -6,6 +6,7 @@ Wrapper to run nnU-Net_predict trained on BCP subjects
 Greg Conan: gconan@umn.edu
 Created: 2022-02-08
 Updated: 2022-10-24
+Modified for memory optimization: 2025-03-15
 """
 # Import standard libraries
 from fnmatch import fnmatch
@@ -81,15 +82,22 @@ def run_BIBSnet(j_args):
 
 def run_nnUNet_predict(cli_args):
     """
-    Run nnU-Net_predict in a subshell using subprocess
+    Run nnU-Net_predict in a subshell using subprocess with memory optimization
     :param cli_args: Dictionary containing all command-line input arguments
     :return: N/A
     """
+    # Add memory optimization flags
     to_run = [cli_args["nnUNet"], "-i",
-                     cli_args["input"], "-o", cli_args["output"], "-t",
-                     str(cli_args["task"]), "-m", cli_args["model"], 
-                     "--disable_tta"
-                     ]
+                 cli_args["input"], "-o", cli_args["output"], "-t",
+                 str(cli_args["task"]), "-m", cli_args["model"], 
+                 # Memory optimization flags:
+                 "--disable_tta",           # Disable test time augmentation to save memory
+                 "--mode", "fast",          # Use fast mode with reduced memory usage
+                 "--step_size", "0.75",     # Increase step size to reduce memory usage
+                 "--disable_mixed_precision", # Can help with certain hardware
+                 "--num_threads_preprocessing", "1", # Limit preprocessing threads
+                 "--all_in_gpu", "False"    # Process on CPU when GPU memory is full
+                 ]
 
     LOGGER.verbose(f"Now running nnUNet with these parameters: {to_run}")
     process = subprocess.Popen(to_run, stdout=subprocess.PIPE, universal_newlines=True)
@@ -110,5 +118,3 @@ def run_nnUNet_predict(cli_args):
                  "at the path below, check their filenames and visually "
                  "inspect them if needed.\n{}\n\n"
                  .format(cli_args["output"], cli_args["input"]))
-
-        
